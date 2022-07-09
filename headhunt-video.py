@@ -246,7 +246,7 @@ def main():
     #if (analyzer.GetSQSMessageSuccess() == True):
     #    analyzer.GetFaceDetectionResults()
 
-    analyzer.StartFaceSearchCollection('grimes')
+    analyzer.StartFaceSearchCollection(collection)
     if (analyzer.GetSQSMessageSuccess() == True):
       analyzer.GetFaceSearchCollectionResults('grimes')
     
