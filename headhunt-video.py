@@ -7,7 +7,10 @@ import argparse
 import colorama
 from termcolor import colored
 from config import config
-from rekognition_objects import RekognitionFace
+
+colorama.init()
+global successFile
+successFile = ''
 
 class VideoDetect:
   jobId = ''
@@ -69,23 +72,16 @@ class VideoDetect:
 
         return succeeded
 
-  def StartLabelDetection(self):
-        response=self.rek.start_label_detection(Video={'S3Object': {'Bucket': self.bucket, 'Name': self.video}},
-            NotificationChannel={'RoleArn': self.roleArn, 'SNSTopicArn': self.snsTopicArn})
-        self.startJobId=response['JobId']
-        print('Start Job Id: ' + self.startJobId)
-
   def StartFaceSearchCollection(self, collection):
     response = self.rek.start_face_search(Video={'S3Object':{'Bucket':self.bucket,'Name':self.video}},
         CollectionId=collection,
         NotificationChannel={'RoleArn':self.roleArn, 'SNSTopicArn':self.snsTopicArn})  
-    self.startJobId=response['JobId']
-    
-    print('Start Job Id: ' + self.startJobId)
+    self.startJobId = response['JobId']  
+    print('Start Job ID: {}'.format(self.startJobId))
 
 
-  def GetFaceSearchCollectionResults(self, collection):
-    maxResults = 2
+  def GetFaceSearchCollectionResults(self, collection, maxFaces):
+    maxResults = maxFaces
     paginationToken = ''
     finished = False
 
@@ -99,89 +95,14 @@ class VideoDetect:
           for faceMatch in personMatch['FaceMatches']:
             print(colored('Person Found. Timestamp : {} milliseconds'.format(str(personMatch['Timestamp']))))
             print(colored('Face from Collection {} & {} are of the same person, with similarity: {}\n'.format(collection, self.video, faceMatch['Similarity']), 'green'))
+            successFile.write('Person Found. Timestamp : {} milliseconds\n'.format(str(personMatch['Timestamp'])))
+            successFile.write('Face from Collection {} & {} are of the same person, with similarity: {}\n'.format(collection, self.video, faceMatch['Similarity']))
+            successFile.flush()
         if 'NextToken' in response:
           paginationToken = response['NextToken']
         else:
           finished = True
 
-  def StartFaceDetection(self):
-    response=self.rek.start_face_detection(Video={'S3Object': {'Bucket': self.bucket, 'Name': self.video}},
-            NotificationChannel={'RoleArn': self.roleArn, 'SNSTopicArn': self.snsTopicArn})
-    self.startJobId=response['JobId']
-    print('Start Job Id: ' + self.startJobId)
-
-  def GetFaceDetectionResults(self):
-        maxResults = 10
-        paginationToken = ''
-        finished = False
-
-        while finished == False:
-            response = self.rek.get_face_detection(JobId=self.startJobId,
-                                            MaxResults=maxResults,
-                                            NextToken=paginationToken)
-
-            print('Codec: ' + response['VideoMetadata']['Codec'])
-            print('Duration: ' + str(response['VideoMetadata']['DurationMillis']))
-            print('Format: ' + response['VideoMetadata']['Format'])
-            print('Frame rate: ' + str(response['VideoMetadata']['FrameRate']))
-            print()
-
-            for faceDetection in response['Faces']:
-                print('Face: ' + str(faceDetection['Face']))
-                print('Confidence: ' + str(faceDetection['Face']['Confidence']))
-                print('Timestamp: ' + str(faceDetection['Timestamp']))
-                print()
-
-            if 'NextToken' in response:
-                paginationToken = response['NextToken']
-            else:
-                finished = True
-
-
-  def GetLabelDetectionResults(self):
-        maxResults = 2 # 10
-        paginationToken = ''
-        finished = False
-
-        while finished == False:
-            response = self.rek.get_label_detection(JobId=self.startJobId,
-                                            MaxResults=maxResults,
-                                            NextToken=paginationToken,
-                                            SortBy='TIMESTAMP')
-
-            print('Codec: ' + response['VideoMetadata']['Codec'])
-            print('Duration: ' + str(response['VideoMetadata']['DurationMillis']))
-            print('Format: ' + response['VideoMetadata']['Format'])
-            print('Frame rate: ' + str(response['VideoMetadata']['FrameRate']))
-            print()
-
-            for labelDetection in response['Labels']:
-                label=labelDetection['Label']
-
-                print("Timestamp: " + str(labelDetection['Timestamp']))
-                print("   Label: " + label['Name'])
-                print("   Confidence: " +  str(label['Confidence']))
-                print("   Instances:")
-                for instance in label['Instances']:
-                    print ("      Confidence: " + str(instance['Confidence']))
-                    print ("      Bounding box")
-                    print ("        Top: " + str(instance['BoundingBox']['Top']))
-                    print ("        Left: " + str(instance['BoundingBox']['Left']))
-                    print ("        Width: " +  str(instance['BoundingBox']['Width']))
-                    print ("        Height: " +  str(instance['BoundingBox']['Height']))
-                    print()
-                print()
-                print ("   Parents:")
-                for parent in label['Parents']:
-                    print ("      " + parent['Name'])
-                print ()
-
-                if 'NextToken' in response:
-                    paginationToken = response['NextToken']
-                else:
-                    finished = True
-       
-    
   def CreateTopicandQueue(self):
     millis = str(int(round(time.time() * 1000)))
     #Create SNS topic
@@ -232,30 +153,27 @@ def argParse():
   parser = argparse.ArgumentParser(description='Find a face collection in video for AWS Rekognition.')
   parser.add_argument('collection_name', type=str,
                     help='name the face collection')
+  parser.add_argument('-m', '--max-face', dest='max_face', type=int,
+                    default=1000, help='Maximum amount of faces you want to find in each frame. Default is 1000')
+  parser.add_argument('-o', '--output-file', dest='output_file_name', type=str, default='success.txt',
+                    help='Name of the output file. Default is success.txt')
   return parser.parse_args()
-
 
 def main():
     args = argParse()
+    global successFile
+    successFile = open(args.output_file_name,'a')
     roleArn = config["roleArn"]
     bucket = config["bucket"]
     video = config["video"]
     collection = args.collection_name
 
-    analyzer=VideoDetect(roleArn, bucket,video)
+    analyzer = VideoDetect(roleArn, bucket,video)
     analyzer.CreateTopicandQueue()
-
-    #analyzer.StartLabelDetection()
-    #if (analyzer.GetSQSMessageSuccess() == True):
-    #    analyzer.GetLabelDetectionResults()
-
-    #analyzer.StartFaceDetection()
-    #if (analyzer.GetSQSMessageSuccess() == True):
-    #    analyzer.GetFaceDetectionResults()
 
     analyzer.StartFaceSearchCollection(collection)
     if (analyzer.GetSQSMessageSuccess() == True):
-      analyzer.GetFaceSearchCollectionResults(collection)
+      analyzer.GetFaceSearchCollectionResults(collection, args.max_face)
     
     analyzer.DeleteTopicandQueue()
 
