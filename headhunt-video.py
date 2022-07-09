@@ -3,7 +3,11 @@ import boto3
 import json
 import sys
 import time
+import argparse
+import colorama
+from termcolor import colored
 from config import config
+from rekognition_objects import RekognitionFace
 
 class VideoDetect:
   jobId = ''
@@ -29,17 +33,16 @@ class VideoDetect:
     jobFound = False
     succeeded = False
     dotLine=0
-    while jobFound == False:
+    while (jobFound == False):
       sqsResponse = self.sqs.receive_message(QueueUrl=self.sqsQueueUrl, MessageAttributeNames=['ALL'], MaxNumberOfMessages=10)
-      if sqsResponse:
-        
-        if 'Messages' not in sqsResponse:
-            if dotLine<40:
+      if (sqsResponse):      
+        if ('Messages' not in sqsResponse):
+            if (dotLine < 40):
                 print('.', end='')
-                dotLine=dotLine+1
+                dotLine = dotLine + 1
             else:
                 print()
-                dotLine=0    
+                dotLine = 0    
             sys.stdout.flush()
             time.sleep(5)
             continue
@@ -69,16 +72,43 @@ class VideoDetect:
   def StartLabelDetection(self):
         response=self.rek.start_label_detection(Video={'S3Object': {'Bucket': self.bucket, 'Name': self.video}},
             NotificationChannel={'RoleArn': self.roleArn, 'SNSTopicArn': self.snsTopicArn})
-
         self.startJobId=response['JobId']
         print('Start Job Id: ' + self.startJobId)
+
+  def StartFaceSearchCollection(self, collection):
+    response = self.rek.start_face_search(Video={'S3Object':{'Bucket':self.bucket,'Name':self.video}},
+        CollectionId=collection,
+        NotificationChannel={'RoleArn':self.roleArn, 'SNSTopicArn':self.snsTopicArn})  
+    self.startJobId=response['JobId']
+    
+    print('Start Job Id: ' + self.startJobId)
+
+
+  def GetFaceSearchCollectionResults(self, collection):
+    maxResults = 2
+    paginationToken = ''
+    finished = False
+
+    while (finished == False):
+      response = self.rek.get_face_search(JobId=self.startJobId,
+                                          MaxResults=maxResults,
+                                          NextToken=paginationToken)
+      #print(str(response['VideoMetadata']['DurationMillis']))
+      for personMatch in response['Persons']:
+        if ('FaceMatches' in personMatch):
+          for faceMatch in personMatch['FaceMatches']:
+            print(colored('Person Found. Timestamp: {}'.format(str(personMatch['Timestamp']))))
+            print(colored('Face from Collection {} & {} are of the same person, with similarity: {}\n'.format(collection, self.video, faceMatch['Similarity']), 'green'))
+        if 'NextToken' in response:
+          paginationToken = response['NextToken']
+        else:
+          finished = True
 
   def StartFaceDetection(self):
-        response=self.rek.start_face_detection(Video={'S3Object': {'Bucket': self.bucket, 'Name': self.video}},
+    response=self.rek.start_face_detection(Video={'S3Object': {'Bucket': self.bucket, 'Name': self.video}},
             NotificationChannel={'RoleArn': self.roleArn, 'SNSTopicArn': self.snsTopicArn})
-
-        self.startJobId=response['JobId']
-        print('Start Job Id: ' + self.startJobId)
+    self.startJobId=response['JobId']
+    print('Start Job Id: ' + self.startJobId)
 
   def GetFaceDetectionResults(self):
         maxResults = 10
@@ -153,56 +183,46 @@ class VideoDetect:
        
     
   def CreateTopicandQueue(self):
-      
-        millis = str(int(round(time.time() * 1000)))
+    millis = str(int(round(time.time() * 1000)))
+    #Create SNS topic
+    snsTopicName = "AmazonRekognitionExample" + millis
+    topicResponse = self.sns.create_topic(Name=snsTopicName)
+    self.snsTopicArn = topicResponse['TopicArn']
 
-        #Create SNS topic
-        
-        snsTopicName="AmazonRekognitionExample" + millis
+    #create SQS queue
+    sqsQueueName = "AmazonRekognitionQueue" + millis
+    self.sqs.create_queue(QueueName=sqsQueueName)
+    self.sqsQueueUrl = self.sqs.get_queue_url(QueueName=sqsQueueName)['QueueUrl']
+    attribs = self.sqs.get_queue_attributes(QueueUrl=self.sqsQueueUrl, AttributeNames=['QueueArn'])['Attributes']
+    sqsQueueArn = attribs['QueueArn']
 
-        topicResponse=self.sns.create_topic(Name=snsTopicName)
-        self.snsTopicArn = topicResponse['TopicArn']
+    # Subscribe SQS queue to SNS topic
+    self.sns.subscribe(TopicArn=self.snsTopicArn, Protocol='sqs', Endpoint=sqsQueueArn)
 
-        #create SQS queue
-        sqsQueueName="AmazonRekognitionQueue" + millis
-        self.sqs.create_queue(QueueName=sqsQueueName)
-        self.sqsQueueUrl = self.sqs.get_queue_url(QueueName=sqsQueueName)['QueueUrl']
+    #Authorize SNS to write SQS queue 
+    policy = """{{
+        "Version":"2012-10-17",
+        "Statement":[
+            {{
+            "Sid":"MyPolicy",
+            "Effect":"Allow",
+            "Principal" : {{"AWS" : "*"}},
+            "Action":"SQS:SendMessage",
+            "Resource": "{}",
+            "Condition":{{
+                "ArnEquals":{{
+                "aws:SourceArn": "{}"
+                }}
+            }}
+            }}
+        ]
+    }}""".format(sqsQueueArn, self.snsTopicArn)
  
-        attribs = self.sqs.get_queue_attributes(QueueUrl=self.sqsQueueUrl,
-                                                    AttributeNames=['QueueArn'])['Attributes']
-                                        
-        sqsQueueArn = attribs['QueueArn']
-
-        # Subscribe SQS queue to SNS topic
-        self.sns.subscribe(
-            TopicArn=self.snsTopicArn,
-            Protocol='sqs',
-            Endpoint=sqsQueueArn)
-
-        #Authorize SNS to write SQS queue 
-        policy = """{{
-  "Version":"2012-10-17",
-  "Statement":[
-    {{
-      "Sid":"MyPolicy",
-      "Effect":"Allow",
-      "Principal" : {{"AWS" : "*"}},
-      "Action":"SQS:SendMessage",
-      "Resource": "{}",
-      "Condition":{{
-        "ArnEquals":{{
-          "aws:SourceArn": "{}"
-        }}
-      }}
-    }}
-  ]
-}}""".format(sqsQueueArn, self.snsTopicArn)
- 
-        response = self.sqs.set_queue_attributes(
+    response = self.sqs.set_queue_attributes(
             QueueUrl = self.sqsQueueUrl,
             Attributes = {
                 'Policy' : policy
-            })
+    })
 
   def DeleteTopicandQueue(self):
     self.sqs.delete_queue(QueueUrl=self.sqsQueueUrl)
@@ -213,17 +233,22 @@ def main():
     roleArn = config["roleArn"]
     bucket = config["bucket"]
     video = config["video"]
+    collection = 'grimes'
 
     analyzer=VideoDetect(roleArn, bucket,video)
     analyzer.CreateTopicandQueue()
 
     #analyzer.StartLabelDetection()
-    #if analyzer.GetSQSMessageSuccess()==True:
+    #if (analyzer.GetSQSMessageSuccess() == True):
     #    analyzer.GetLabelDetectionResults()
 
-    analyzer.StartFaceDetection()
+    #analyzer.StartFaceDetection()
+    #if (analyzer.GetSQSMessageSuccess() == True):
+    #    analyzer.GetFaceDetectionResults()
+
+    analyzer.StartFaceSearchCollection('grimes')
     if (analyzer.GetSQSMessageSuccess() == True):
-        analyzer.GetFaceDetectionResults()
+      analyzer.GetFaceSearchCollectionResults('grimes')
     
     analyzer.DeleteTopicandQueue()
 
