@@ -97,7 +97,7 @@ class VideoDetect:
       for personMatch in response['Persons']:
         if ('FaceMatches' in personMatch):
           for faceMatch in personMatch['FaceMatches']:
-            print(colored('Person Found. Timestamp: {}'.format(str(personMatch['Timestamp']))))
+            print(colored('Person Found. Timestamp : {} milliseconds'.format(str(personMatch['Timestamp']))))
             print(colored('Face from Collection {} & {} are of the same person, with similarity: {}\n'.format(collection, self.video, faceMatch['Similarity']), 'green'))
         if 'NextToken' in response:
           paginationToken = response['NextToken']
@@ -228,12 +228,19 @@ class VideoDetect:
     self.sqs.delete_queue(QueueUrl=self.sqsQueueUrl)
     self.sns.delete_topic(TopicArn=self.snsTopicArn)
 
+def argParse():
+  parser = argparse.ArgumentParser(description='Find a face collection in video for AWS Rekognition.')
+  parser.add_argument('collection_name', type=str,
+                    help='name the face collection')
+  return parser.parse_args()
+
 
 def main():
+    args = argParse()
     roleArn = config["roleArn"]
     bucket = config["bucket"]
     video = config["video"]
-    collection = 'grimes'
+    collection = args.collection_name
 
     analyzer=VideoDetect(roleArn, bucket,video)
     analyzer.CreateTopicandQueue()
@@ -248,7 +255,7 @@ def main():
 
     analyzer.StartFaceSearchCollection(collection)
     if (analyzer.GetSQSMessageSuccess() == True):
-      analyzer.GetFaceSearchCollectionResults('grimes')
+      analyzer.GetFaceSearchCollectionResults(collection)
     
     analyzer.DeleteTopicandQueue()
 
