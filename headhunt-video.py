@@ -7,10 +7,13 @@ import argparse
 import colorama
 from termcolor import colored
 from config import config
+from datetime import datetime
 
 colorama.init()
 global successFile
 successFile = ''
+global intSuccessMatches
+intSuccessMatches = 0
 
 class VideoDetect:
   jobId = ''
@@ -53,9 +56,12 @@ class VideoDetect:
         for message in sqsResponse['Messages']:
             notification = json.loads(message['Body'])
             rekMessage = json.loads(notification['Message'])
+            if (rekMessage['Status'] == 'FAILED'):
+              print(colored('\nERROR Message Below:\n {}'.format(rekMessage), 'red'))
+              exit()
             print(rekMessage['JobId'])
             print(rekMessage['Status'])
-            if rekMessage['JobId'] == self.startJobId:
+            if (rekMessage['JobId'] == self.startJobId):
                 print('Matching Job Found:' + rekMessage['JobId'])
                 jobFound = True
                 if (rekMessage['Status']=='SUCCEEDED'):
@@ -93,12 +99,14 @@ class VideoDetect:
       for personMatch in response['Persons']:
         if ('FaceMatches' in personMatch):
           for faceMatch in personMatch['FaceMatches']:
+            global intSuccessMatches
+            intSuccessMatches += 1
             print(colored('Person Found. Timestamp : {} milliseconds'.format(str(personMatch['Timestamp']))))
             print(colored('Face from Collection {} & {} are of the same person, with similarity: {}\n'.format(collection, self.video, faceMatch['Similarity']), 'green'))
             successFile.write('Person Found. Timestamp : {} milliseconds\n'.format(str(personMatch['Timestamp'])))
             successFile.write('Face from Collection {} & {} are of the same person, with similarity: {}\n'.format(collection, self.video, faceMatch['Similarity']))
             successFile.flush()
-        if 'NextToken' in response:
+        if ('NextToken' in response):
           paginationToken = response['NextToken']
         else:
           finished = True
@@ -139,15 +147,25 @@ class VideoDetect:
         ]
     }}""".format(sqsQueueArn, self.snsTopicArn)
  
-    response = self.sqs.set_queue_attributes(
-            QueueUrl = self.sqsQueueUrl,
-            Attributes = {
-                'Policy' : policy
+    self.sqs.set_queue_attributes(
+        QueueUrl = self.sqsQueueUrl,
+        Attributes = {
+            'Policy' : policy
     })
 
   def DeleteTopicandQueue(self):
     self.sqs.delete_queue(QueueUrl=self.sqsQueueUrl)
     self.sns.delete_topic(TopicArn=self.snsTopicArn)
+
+def getMinuteLanguage(intMinutes):
+    if intMinutes == 1:
+        return 'Minute'
+    return 'Minutes'
+
+def getSecondLanguage(intSeconds):
+    if intSeconds == 1:
+        return 'Second'
+    return 'Seconds'
 
 def argParse():
   parser = argparse.ArgumentParser(description='Find a face collection in video for AWS Rekognition.')
@@ -160,23 +178,30 @@ def argParse():
   return parser.parse_args()
 
 def main():
-    args = argParse()
-    global successFile
-    successFile = open(args.output_file_name,'a')
-    roleArn = config["roleArn"]
-    bucket = config["bucket"]
-    video = config["video"]
-    collection = args.collection_name
+  args = argParse()
+  global successFile
+  successFile = open(args.output_file_name,'a')
+  roleArn = config["roleArn"]
+  bucket = config["bucket"]
+  video = config["video"]
+  collection = args.collection_name
 
-    analyzer = VideoDetect(roleArn, bucket,video)
-    analyzer.CreateTopicandQueue()
+  beforeProcess = datetime.now()
+  print('Time Started: {}'.format(beforeProcess))
+  analyzer = VideoDetect(roleArn, bucket,video)
+  analyzer.CreateTopicandQueue()
 
-    analyzer.StartFaceSearchCollection(collection)
-    if (analyzer.GetSQSMessageSuccess() == True):
-      analyzer.GetFaceSearchCollectionResults(collection, args.max_face)
+  analyzer.StartFaceSearchCollection(collection)
+  if (analyzer.GetSQSMessageSuccess() == True):
+    analyzer.GetFaceSearchCollectionResults(collection, args.max_face)
     
-    analyzer.DeleteTopicandQueue()
+  analyzer.DeleteTopicandQueue()
+  difference = (datetime.now() - beforeProcess)
+  seconds_in_day = 24 * 60 * 60
+  timeElapsed = divmod(difference.days * seconds_in_day + difference.seconds, 60)
+  print('Total Time Elapsed: {} {} {} {}'.format(timeElapsed[0], getMinuteLanguage(timeElapsed[0]), timeElapsed[1], getSecondLanguage(timeElapsed[1])))
+  print('Total Faces Found: {}'.format(intSuccessMatches))
 
 
 if __name__ == "__main__":
-    main()
+  main()
