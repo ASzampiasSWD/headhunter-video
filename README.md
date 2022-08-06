@@ -40,7 +40,7 @@ chmod +x headhunt-video.py
 
 <pre>headhunter-video % ./create_collection.py amanda -t ./Known_People/Amanda</pre>
 <kbd>
-  <img width="80%" height="80%" alt="alt_text" src="Docs/createCollection.png" />
+  <img width="80%" height="80%" alt="alt_text" src="Docs/createCollection1.png" />
 </kbd>
 
 ## Video Type Allowed in S3 Bucket ##
