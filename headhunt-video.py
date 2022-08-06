@@ -96,6 +96,8 @@ class VideoDetect:
                                           MaxResults=maxResults,
                                           NextToken=paginationToken)
       #print(str(response['VideoMetadata']['DurationMillis']))
+      if (not response['Persons']):
+        finished = True
       for personMatch in response['Persons']:
         if ('FaceMatches' in personMatch):
           for faceMatch in personMatch['FaceMatches']:
