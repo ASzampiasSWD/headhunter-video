@@ -13,13 +13,26 @@ chmod +x create_collection.py
 chmod +x headhunt-video.py
 </pre>
 
-3. Go to IAM -> Roles. Scroll to the very end for directions in this link: <a href="https://docs.aws.amazon.com/rekognition/latest/dg/api-video-roles.html" target="_blank">api-video-roles.html</a>
+3. Go to IAM -> Roles. Make an AWSRekognitionIAMServiceRole. Scroll to the very end for directions in this link: <a href="https://docs.aws.amazon.com/rekognition/latest/dg/api-video-roles.html" target="_blank">api-video-roles.html</a>
 <kbd>
-  <img width="80%" height="80%" alt="alt_text" src="Documentation/arnInfo.png" />
+  <img width="80%" height="80%" alt="alt_text" src="Docs/arnInfo.png" />
 </kbd>
+<br /><br />
 
-4. Make a S3 Bucket. Note the name of the bucket.
-
+<p>4. Make an S3 Bucket. Note the name of the bucket. Put bucket name in config.py as-is.</p>
+<kbd>
+  <img width="80%" height="80%" alt="alt_text" src="Docs/bucketName.png" />
+</kbd>
+<br /><br />
+<p>5. Upload video. Note the video name you'd like to run facial rekognition on. Put video name in config.py as-is.</p>
+<kbd>
+  <img width="80%" height="80%" alt="alt_text" src="Docs/videoName.png" />
+</kbd>
+<br /><br />
+<p>6. config.py should look something like this. With the values replaced with your specific ARN, S3 Bucket Name, and Video Name.</p>
+<kbd>
+  <img width="80%" height="80%" alt="alt_text" src="Docs/configExample.png" />
+</kbd>
 
 ## Video Type Allowed in S3 Bucket ##
 
