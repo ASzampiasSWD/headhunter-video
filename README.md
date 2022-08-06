@@ -34,6 +34,15 @@ chmod +x headhunt-video.py
   <img width="80%" height="80%" alt="alt_text" src="Docs/configExample.png" />
 </kbd>
 
+## Running The Program
+
+<p>Create a collection first. A collection is one image or a set of images. We will use my face as an example. Note: Only use -d (delete) if a collection has already been created.</p>
+
+<pre>headhunter-video % ./create_collection.py amanda -t ./Known_People/Amanda</pre>
+<kbd>
+  <img width="80%" height="80%" alt="alt_text" src="Docs/createCollection.png" />
+</kbd>
+
 ## Video Type Allowed in S3 Bucket ##
 
 Q: What video formats does Amazon Rekognition support? 
