@@ -69,9 +69,13 @@ Amazon Rekognition Video operations can analyze videos stored in Amazon S3 bucke
 This script is supported on Windows, Linux, and MacOS.
 
 ## Demo Videos
-[![How To Video](https://img.youtube.com/vi/ezAda6bAB0A/0.jpg)](https://www.youtube.com/watch?v=ezAda6bAB0A)
+[![Yearbook Demo](https://img.youtube.com/vi/ezAda6bAB0A/0.jpg)](https://www.youtube.com/watch?v=ezAda6bAB0A)
 
 <p>Still Picture Example using a Yearbook.</p>
+
+[![Moving Person Demo](https://img.youtube.com/vi/3yDLzu9BlYU/0.jpg)](https://www.youtube.com/watch?v=3yDLzu9BlYU)
+
+<p>Moving Person Example</p>
 
 
 ## 🚨 🚓 Amazon Policy Towards Police and Law Enforcement: Positive 🚓 🚨
