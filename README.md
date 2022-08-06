@@ -38,10 +38,26 @@ chmod +x headhunt-video.py
 
 <p>Create a collection first. A collection is one image or a set of images. We will use my face as an example. Note: Only use -d (delete) if a collection has already been created.</p>
 
-<pre>headhunter-video % ./create_collection.py amanda -t ./Known_People/Amanda</pre>
+<pre>./create_collection.py amanda -t ./Known_People/Amanda</pre>
 <kbd>
   <img width="80%" height="80%" alt="alt_text" src="Docs/createCollection1.png" />
 </kbd>
+
+### Example 1: Using the config.py Video Name
+
+<p>Run headhunt-video.py amanda. The config.py file is set to the video boat.mp4</p>
+<pre>./headhunt-video.py amanda</pre>
+<kbd>
+  <img width="80%" height="80%" alt="alt_text" src="Docs/runBoat.png" />
+</kbd>
+
+### Example 2: Specifying Video Name using -v
+
+<p>The config.py video name doesn't need to be used. Use the -v key if you want to specify the video name within the command line.</p>
+<kbd>
+  <img width="80%" height="80%" alt="alt_text" src="Docs/runStreet.png" />
+</kbd>
+
 
 ## Video Type Allowed in S3 Bucket ##
 
