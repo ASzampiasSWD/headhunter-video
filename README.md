@@ -1,10 +1,12 @@
 # headhunter-video
-Find people in face masks, sunglasses, low quality images, hats, and different hair styles using AWS Rekognition. HeadHunter takes an image (or sets of images) and identifies the same face in a video. Options include Face-To-Face, Person-To-Face, and People-To-Face.
+Find people in face masks, sunglasses, low quality images, hats, and different hair styles using AWS Rekognition. HeadHunter takes a collection of images and identifies the faces in a video.
 
 
 ## Video Type Allowed in S3 Bucket ##
 
-Upload an MOV or MPEG-4 format video file to your S3 bucket. While developing and testing, we suggest using short videos no longer than 30 seconds in length.
+Q: What video formats does Amazon Rekognition support? 
+
+Amazon Rekognition Video operations can analyze videos stored in Amazon S3 buckets. The video must be encoded using the H.264 codec. The supported file formats are MPEG-4 and MOV. A codec is software or hardware that compresses data for faster delivery and decompresses received data into its original form. The H.264 codec is commonly used for the recording, compression and distribution of video content. A video file format may contain one or more codecs. If your MOV or MPEG-4 format video file does not work with Rekognition Video, check that the codec used to encode the video is H.264.
 
 ## Operating Systems
 This script is supported on Windows, Linux, and MacOS.

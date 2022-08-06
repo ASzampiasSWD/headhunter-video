@@ -173,6 +173,12 @@ def argParse():
                     help='name the face collection')
   parser.add_argument('-m', '--max-face', dest='max_face', type=int,
                     default=1000, help='Maximum amount of faces you want to find in each frame. Default is 1000')
+  parser.add_argument('-b', '--bucket', dest='bucket', type=str,
+                    default=config["s3_bucket_name"], help='S3 Bucket you want to pick. Default is in config.py')
+  parser.add_argument('-v', '--video', dest='video', type=str,
+                    default=config["video_name"], help='Video Name you want to analyze. Default is in config.py')
+  parser.add_argument('-arn', '--role-arn', dest='role_arn', type=str,
+                    default=config["role_arn"], help='Role ARN. Default is in config.py')
   parser.add_argument('-o', '--output-file', dest='output_file_name', type=str, default='success.txt',
                     help='Name of the output file. Default is success.txt')
   return parser.parse_args()
@@ -181,9 +187,9 @@ def main():
   args = argParse()
   global successFile
   successFile = open(args.output_file_name,'a')
-  roleArn = config["roleArn"]
-  bucket = config["bucket"]
-  video = config["video"]
+  roleArn = args.role_arn
+  bucket = args.bucket
+  video = args.video
   collection = args.collection_name
 
   beforeProcess = datetime.now()
